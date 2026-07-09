@@ -37,8 +37,16 @@ print(f"[INFO] Resume file found: {RESUME_PATH}")
 try:
     options = Options()
     options.add_argument('--headless')   # <-- runs Firefox invisibly
+    options.accept_insecure_certs = True  # handle SSL issues on CI
+    # Network stability preferences for GitHub Actions runner
+    options.set_preference('network.http.connection-timeout', 60)
+    options.set_preference('network.http.response.timeout', 60)
+    options.set_preference('network.http.connection-retry-count', 5)
+    options.set_preference('security.enterprise_roots.enabled', True)
+    options.set_preference('browser.cache.disk.enable', False)
+    options.set_preference('browser.cache.memory.enable', False)
     driver = webdriver.Firefox(options=options)
-    wait = WebDriverWait(driver, 15)
+    wait = WebDriverWait(driver, 20)
     print("[INFO] Browser launched in headless mode (no window).")
 except Exception as e:
     print(f"[ERROR] Webdriver exception: {e}")
@@ -64,13 +72,25 @@ except Exception as e:
     driver.quit()
     exit(1)
 
-# --- Navigate to Profile / Resume Upload page ---
-try:
-    print("[INFO] Navigating to profile page...")
-    driver.get('https://www.naukri.com/mnjuser/profile?id=&altresid')
-    time.sleep(4)
-except Exception as e:
-    print(f"[ERROR] Could not load profile page: {e}")
+# --- Navigate to Profile / Resume Upload page (with retry) ---
+profile_loaded = False
+for attempt in range(1, 4):  # retry up to 3 times
+    try:
+        print(f"[INFO] Navigating to profile page (attempt {attempt}/3)...")
+        driver.get('https://www.naukri.com/mnjuser/profile?id=&altresid')
+        time.sleep(6)
+        # Check we actually landed on the profile page, not an error page
+        if 'neterror' in driver.current_url or 'about:' in driver.current_url:
+            raise Exception(f"Landed on error page: {driver.current_url}")
+        print("[INFO] Profile page loaded successfully.")
+        profile_loaded = True
+        break
+    except Exception as e:
+        print(f"[WARN] Attempt {attempt} failed: {e}")
+        time.sleep(5)
+
+if not profile_loaded:
+    print("[ERROR] Could not load profile page after 3 attempts.")
     driver.quit()
     exit(1)
 
