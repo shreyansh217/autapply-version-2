@@ -1,4 +1,4 @@
-name: Naukri Auto-Apply & Resume Upload
+name: Naukri Resume Upload
 
 on:
   schedule:
@@ -54,14 +54,7 @@ jobs:
           firefox --version
           geckodriver --version
 
-      # ── 6. Run Auto-Apply Script ──────────────────────────────────────
-      - name: Run Job Auto-Apply
-        env:
-          NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
-          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-        run: python Naukri-Mozilla.py
-
-      # ── 7. Run Resume Upload Script ───────────────────────────────────
+      # ── 6. Run Resume Upload Script ───────────────────────────────────
       - name: Run Resume Upload
         env:
           NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
