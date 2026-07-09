@@ -123,49 +123,88 @@ if not profile_loaded:
 
 # --- Find and click the Upload/Update Resume button ---
 try:
-    print("[INFO] Looking for resume upload button...")
+    print("[INFO] Scrolling page to load all sections...")
+    # Naukri's resume section is below the fold — scroll to trigger lazy loading
+    for frac in [0.25, 0.5, 0.75, 1.0]:
+        driver.execute_script(f"window.scrollTo(0, document.body.scrollHeight * {frac});")
+        time.sleep(1)
+    driver.execute_script("window.scrollTo(0, 0);")
+    time.sleep(2)
+
+    # Save a screenshot so we can debug if something goes wrong
+    driver.save_screenshot('/tmp/naukri_profile.png')
+    print("[DEBUG] Screenshot saved to /tmp/naukri_profile.png")
 
     upload_input = None
 
-    # Strategy 1: Direct file <input> element (hidden, triggered by JS)
+    # ── Step 1: Try to click the Edit/Update Resume trigger button ───────
+    # Naukri hides the <input type="file"> until you click the trigger
+    trigger_xpaths = [
+        "//label[contains(@for,'attachCV')]",
+        "//label[contains(@class,'fileUpload')]",
+        "//*[@id='attachCV']",
+        "//*[contains(text(),'Update Resume')]",
+        "//*[contains(text(),'Upload Resume')]",
+        "//*[contains(text(),'Add Resume')]",
+        "//*[contains(text(),'upload resume')]",
+        "//*[contains(text(),'update resume')]",
+        "//*[@title='Update Resume']",
+        "//*[@aria-label='Update Resume']",
+        "//*[contains(@class,'editResume')]",
+        "//*[contains(@class,'resumeBtn')]",
+        "//*[contains(@class,'updateResume')]",
+        "//span[contains(@class,'edit') and ancestor::*[contains(@class,'resume')]]",
+    ]
+
+    for xpath in trigger_xpaths:
+        btns = driver.find_elements(By.XPATH, xpath)
+        if btns:
+            try:
+                driver.execute_script("arguments[0].scrollIntoView(true);", btns[0])
+                time.sleep(1)
+                driver.execute_script("arguments[0].click();", btns[0])
+                print(f"[INFO] Clicked trigger: {xpath}")
+                time.sleep(3)
+                break
+            except Exception:
+                continue
+
+    # ── Step 2: Find file input via Selenium ─────────────────────────────
     file_inputs = driver.find_elements(By.XPATH, "//input[@type='file']")
     for inp in file_inputs:
         accept = inp.get_attribute('accept') or ''
-        # Look for inputs that accept doc/pdf types
-        if any(ext in accept for ext in ['.pdf', '.doc', 'application']):
+        if any(ext in accept for ext in ['.pdf', '.doc', 'application', 'pdf']):
             upload_input = inp
             print(f"[INFO] Found file input (accept='{accept}')")
             break
+    if not upload_input and file_inputs:
+        upload_input = file_inputs[0]
+        print("[INFO] Using first available file input.")
+
+    # ── Step 3: JavaScript fallback — find ALL inputs including hidden ────
+    if not upload_input:
+        upload_input = driver.execute_script("""
+            var inputs = Array.from(document.querySelectorAll('input[type="file"]'));
+            if (inputs.length > 0) return inputs[0];
+            // Also try inputs without explicit type (some sites omit it)
+            var allInputs = Array.from(document.querySelectorAll('input'));
+            for (var inp of allInputs) {
+                var accept = inp.getAttribute('accept') || '';
+                if (accept.includes('pdf') || accept.includes('doc')) return inp;
+            }
+            return null;
+        """)
+        if upload_input:
+            print("[INFO] Found file input via JavaScript.")
 
     if not upload_input:
-        # Strategy 2: Any file input on the page
-        if file_inputs:
-            upload_input = file_inputs[0]
-            print("[INFO] Found generic file input.")
-
-    if not upload_input:
-        # Strategy 3: Click the visible "Update Resume" / "Upload Resume" button first
-        for xpath in [
-            "//*[contains(text(),'Update Resume')]",
-            "//*[contains(text(),'Upload Resume')]",
-            "//*[contains(text(),'upload resume')]",
-            "//*[contains(text(),'update resume')]",
-            "//label[contains(@class,'fileUpload')]",
-            "//label[contains(@for,'attachCV')]",
-        ]:
-            btns = driver.find_elements(By.XPATH, xpath)
-            if btns:
-                print(f"[INFO] Clicking upload trigger: {xpath}")
-                driver.execute_script("arguments[0].click();", btns[0])
-                time.sleep(2)
-                # Now try to find the file input again
-                file_inputs = driver.find_elements(By.XPATH, "//input[@type='file']")
-                if file_inputs:
-                    upload_input = file_inputs[0]
-                break
-
-    if not upload_input:
+        # Print all inputs found on page for diagnosis
+        all_inputs = driver.find_elements(By.TAG_NAME, 'input')
+        print(f"[DEBUG] Total <input> elements on page: {len(all_inputs)}")
+        for inp in all_inputs:
+            print(f"  type={inp.get_attribute('type')} id={inp.get_attribute('id')} accept={inp.get_attribute('accept')}")
         raise Exception("Could not find any file upload input on the profile page.")
+
 
     # Make the input visible in case it's hidden (Naukri hides them via CSS)
     driver.execute_script("arguments[0].style.display = 'block'; arguments[0].style.visibility = 'visible';", upload_input)
