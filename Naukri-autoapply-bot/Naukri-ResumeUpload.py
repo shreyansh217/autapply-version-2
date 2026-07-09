@@ -93,47 +93,52 @@ try:
     username_field = wait.until(EC.presence_of_element_located((By.ID, 'usernameField')))
     username_field.clear()
     username_field.send_keys(email)
-    time.sleep(1)
+    time.sleep(0.5)
 
     password_field = driver.find_element(By.ID, 'passwordField')
     password_field.clear()
     password_field.send_keys(password)
-    time.sleep(1)
+    time.sleep(0.5)
 
-    # Try clicking the Login button (more reliable than pressing Enter)
+    # Submit: try specific login button first, fallback to Enter key
     try:
         login_btn = driver.find_element(By.XPATH,
-            "//button[@type='submit'] | //input[@type='submit'] | "
-            "//*[contains(@class,'login')] | //*[text()='Login']"
+            "//button[contains(@class,'loginButton')] | "
+            "//button[contains(@class,'login-btn')] | "
+            "//button[@data-ga-track='login-submit'] | "
+            "//div[contains(@class,'actions')]//button"
         )
         driver.execute_script("arguments[0].click();", login_btn)
         print("[INFO] Clicked Login button.")
     except Exception:
-        # Fallback: press Enter
+        # Reliable fallback — this is what worked locally before
         password_field.send_keys(Keys.ENTER)
         print("[INFO] Pressed Enter to submit login.")
 
-    # Wait for login to complete — URL must change away from /nlogin/
+    # Wait up to 30s for URL to change away from login page
     print("[INFO] Waiting for login redirect...")
     try:
-        wait.until(lambda d: 'nlogin' not in d.current_url and 'login' not in d.current_url.lower())
+        WebDriverWait(driver, 30).until(
+            lambda d: 'nlogin' not in d.current_url and 'login' not in d.current_url.lower()
+        )
         print(f"[INFO] Login confirmed! URL: {driver.current_url}")
     except Exception:
-        # Print debug info if login didn't redirect
-        print(f"[WARN] URL after login attempt: {driver.current_url}")
+        print(f"[WARN] URL after login: {driver.current_url}")
         print(f"[WARN] Page title: {driver.title}")
-        body_text = driver.find_element(By.TAG_NAME, 'body').text[:500]
-        print(f"[WARN] Page text snippet: {body_text}")
-        print("[ERROR] Login failed — Naukri did not redirect away from login page.")
-        print("[ERROR] Possible causes: wrong credentials, CAPTCHA, or bot detection.")
+        body_text = driver.find_element(By.TAG_NAME, 'body').text[:800]
+        print(f"[WARN] Page text:\n{body_text}")
         driver.save_screenshot('/tmp/login_failed.png')
+        print("[ERROR] Login failed — session not established.")
+        print("[ERROR] Check: 1) Are NAUKRI_EMAIL/NAUKRI_PASSWORD secrets correct?")
+        print("[ERROR]        2) Does login work locally with these exact credentials?")
         driver.quit()
         exit(1)
 
 except Exception as e:
-    print(f"[ERROR] Login failed: {e}")
+    print(f"[ERROR] Login exception: {e}")
     driver.quit()
     exit(1)
+
 
 # --- Navigate to Profile / Resume Upload page (with retry) ---
 profile_loaded = False
