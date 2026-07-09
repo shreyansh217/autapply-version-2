@@ -46,20 +46,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 5. Install Firefox + Geckodriver ──────────────────────────────
-      - name: Install Firefox
+      # ── 5. Install Firefox + Geckodriver (via apt — reliable, no curl/tar) ───
+      - name: Install Firefox and Geckodriver
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y firefox
-
-      - name: Install Geckodriver
-        run: |
-          GECKO_VER=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest \
-            | grep '"tag_name"' | cut -d '"' -f 4)
-          curl -Lo geckodriver.tar.gz \
-            "https://github.com/mozilla/geckodriver/releases/download/${GECKO_VER}/geckodriver-${GECKO_VER}-linux64.tar.gz"
-          tar -xzf geckodriver.tar.gz
-          sudo mv geckodriver /usr/local/bin/
+          sudo apt-get install -y firefox-geckodriver
+          firefox --version
           geckodriver --version
 
       # ── 6. Run Auto-Apply Script ──────────────────────────────────────
