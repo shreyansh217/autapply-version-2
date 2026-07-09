@@ -121,6 +121,15 @@ if not profile_loaded:
     driver.quit()
     exit(1)
 
+# ── DEBUG: Print what Naukri actually served ─────────────────────────────
+print(f"[DEBUG] Page title: {driver.title}")
+print(f"[DEBUG] Current URL: {driver.current_url}")
+page_src = driver.page_source
+print(f"[DEBUG] Page source length: {len(page_src)} chars")
+print("[DEBUG] First 4000 chars of page source:")
+print(page_src[:4000])
+print("[DEBUG] --- end of source snippet ---")
+
 # --- Find and click the Upload/Update Resume button ---
 try:
     print("[INFO] Scrolling page to load all sections...")
