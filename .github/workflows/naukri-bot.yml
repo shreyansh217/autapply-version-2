@@ -66,11 +66,13 @@ jobs:
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
         run: python Naukri-ResumeUpload.py
 
-      # ── 7. Upload debug screenshot (runs even on failure) ─────────────
-      - name: Upload debug screenshot
+      # ── 7. Upload debug screenshots (runs even on failure) ────────────
+      - name: Upload debug screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: naukri-profile-screenshot
-          path: /tmp/naukri_profile.png
+          name: naukri-debug-screenshots
+          path: |
+            /tmp/naukri_profile.png
+            /tmp/login_failed.png
           if-no-files-found: ignore

@@ -87,13 +87,49 @@ except Exception as e:
 try:
     print("[INFO] Navigating to Naukri login page...")
     driver.get('https://www.naukri.com/nlogin/login')
-    time.sleep(3)
+    time.sleep(4)
 
-    wait.until(EC.presence_of_element_located((By.ID, 'usernameField'))).send_keys(email)
-    driver.find_element(By.ID, 'passwordField').send_keys(password)
-    driver.find_element(By.ID, 'passwordField').send_keys(Keys.ENTER)
-    print("[INFO] Logged in! Waiting for page to load...")
-    time.sleep(5)
+    # Fill in credentials
+    username_field = wait.until(EC.presence_of_element_located((By.ID, 'usernameField')))
+    username_field.clear()
+    username_field.send_keys(email)
+    time.sleep(1)
+
+    password_field = driver.find_element(By.ID, 'passwordField')
+    password_field.clear()
+    password_field.send_keys(password)
+    time.sleep(1)
+
+    # Try clicking the Login button (more reliable than pressing Enter)
+    try:
+        login_btn = driver.find_element(By.XPATH,
+            "//button[@type='submit'] | //input[@type='submit'] | "
+            "//*[contains(@class,'login')] | //*[text()='Login']"
+        )
+        driver.execute_script("arguments[0].click();", login_btn)
+        print("[INFO] Clicked Login button.")
+    except Exception:
+        # Fallback: press Enter
+        password_field.send_keys(Keys.ENTER)
+        print("[INFO] Pressed Enter to submit login.")
+
+    # Wait for login to complete — URL must change away from /nlogin/
+    print("[INFO] Waiting for login redirect...")
+    try:
+        wait.until(lambda d: 'nlogin' not in d.current_url and 'login' not in d.current_url.lower())
+        print(f"[INFO] Login confirmed! URL: {driver.current_url}")
+    except Exception:
+        # Print debug info if login didn't redirect
+        print(f"[WARN] URL after login attempt: {driver.current_url}")
+        print(f"[WARN] Page title: {driver.title}")
+        body_text = driver.find_element(By.TAG_NAME, 'body').text[:500]
+        print(f"[WARN] Page text snippet: {body_text}")
+        print("[ERROR] Login failed — Naukri did not redirect away from login page.")
+        print("[ERROR] Possible causes: wrong credentials, CAPTCHA, or bot detection.")
+        driver.save_screenshot('/tmp/login_failed.png')
+        driver.quit()
+        exit(1)
+
 except Exception as e:
     print(f"[ERROR] Login failed: {e}")
     driver.quit()
@@ -106,9 +142,16 @@ for attempt in range(1, 4):  # retry up to 3 times
         print(f"[INFO] Navigating to profile page (attempt {attempt}/3)...")
         driver.get('https://www.naukri.com/mnjuser/profile?id=&altresid')
         time.sleep(6)
-        # Check we actually landed on the profile page, not an error page
-        if 'neterror' in driver.current_url or 'about:' in driver.current_url:
-            raise Exception(f"Landed on error page: {driver.current_url}")
+        cur = driver.current_url
+        title = driver.title
+        print(f"[DEBUG] Profile nav URL: {cur}")
+        print(f"[DEBUG] Profile nav title: {title}")
+        # Fail if Naukri redirected us back to login
+        if 'nlogin' in cur or 'login' in cur.lower() or 'nlogin' in title.lower():
+            raise Exception(f"Redirected back to login — session lost. URL: {cur}")
+        # Fail if browser error page
+        if 'neterror' in cur or 'about:' in cur:
+            raise Exception(f"Browser error page: {cur}")
         print("[INFO] Profile page loaded successfully.")
         profile_loaded = True
         break
