@@ -46,13 +46,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 5. Install Chromium + ChromeDriver (reliable on GitHub Actions) ──
-      - name: Install Chromium and ChromeDriver
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y chromium-browser chromium-chromedriver
-          chromium-browser --version
-          chromedriver --version
+      # ── 5. Install Chrome + ChromeDriver (real binary, not snap) ─────────
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
 
       # ── 6. Run Resume Upload Script ───────────────────────────────────
       - name: Run Resume Upload
