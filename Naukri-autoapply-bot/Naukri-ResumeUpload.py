@@ -2,7 +2,8 @@ import time
 import os
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.chrome.options  import Options
+from selenium.webdriver.chrome.service  import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -33,27 +34,26 @@ if not os.path.isfile(RESUME_PATH):
 
 print(f"[INFO] Resume file found: {RESUME_PATH}")
 
-# --- Launch Firefox (Headless - no browser window) ---
+# --- Launch Chrome (Headless - no browser window) ---
 try:
     options = Options()
-    options.add_argument('--headless')   # <-- runs Firefox invisibly
-    options.accept_insecure_certs = True  # handle SSL issues on CI
-    # Network stability preferences for GitHub Actions runner
-    options.set_preference('network.http.connection-timeout', 60)
-    options.set_preference('network.http.response.timeout', 60)
-    options.set_preference('network.http.connection-retry-count', 5)
-    options.set_preference('security.enterprise_roots.enabled', True)
-    options.set_preference('browser.cache.disk.enable', False)
-    options.set_preference('browser.cache.memory.enable', False)
-    driver = webdriver.Firefox(options=options)
+    options.add_argument('--headless')              # runs Chrome invisibly
+    options.add_argument('--no-sandbox')            # required for GitHub Actions
+    options.add_argument('--disable-dev-shm-usage') # prevent shared memory crashes
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
+    options.add_argument('--ignore-certificate-errors')  # handle SSL
+    options.add_argument('--allow-insecure-localhost')
+    # Use the system chromedriver installed via apt
+    service = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=service, options=options)
     wait = WebDriverWait(driver, 20)
-    print("[INFO] Browser launched in headless mode (no window).")
+    print("[INFO] Chrome launched in headless mode (no window).")
 except Exception as e:
     print(f"[ERROR] Webdriver exception: {e}")
     print("\nTROUBLESHOOT:")
-    print("  1. Make sure Firefox is installed.")
-    print("  2. Download geckodriver: https://github.com/mozilla/geckodriver/releases")
-    print("  3. Place geckodriver.exe in C:\\Windows\\System32\\")
+    print("  1. Make sure Google Chrome or Chromium is installed.")
+    print("  2. Make sure chromedriver is installed and in PATH.")
     exit(1)
 
 # --- Login to Naukri ---

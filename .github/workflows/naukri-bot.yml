@@ -46,26 +46,13 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 5. Install Firefox (via Mozilla PPA deb) + pinned Geckodriver ────
-      - name: Install Firefox and Geckodriver
+      # ── 5. Install Chromium + ChromeDriver (reliable on GitHub Actions) ──
+      - name: Install Chromium and ChromeDriver
         run: |
-          # --- Firefox: install as real deb via Mozilla PPA (not snap) ---
-          sudo add-apt-repository ppa:mozillateam/ppa -y
-          echo 'Package: *
-          Pin: release o=LP-PPA-mozillateam
-          Pin-Priority: 1001
-          ' | sudo tee /etc/apt/preferences.d/mozilla-firefox
           sudo apt-get update -y
-          sudo apt-get install -y firefox
-
-          # --- Geckodriver: pinned version, no GitHub API call needed ---
-          GECKO_VER="v0.37.0"
-          curl -Lo geckodriver.tar.gz \
-            "https://github.com/mozilla/geckodriver/releases/download/${GECKO_VER}/geckodriver-${GECKO_VER}-linux64.tar.gz"
-          tar -xzf geckodriver.tar.gz
-          sudo mv geckodriver /usr/local/bin/
-          firefox --version
-          geckodriver --version
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          chromium-browser --version
+          chromedriver --version
 
       # ── 6. Run Resume Upload Script ───────────────────────────────────
       - name: Run Resume Upload
