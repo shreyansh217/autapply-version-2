@@ -1,10 +1,7 @@
 name: Naukri Auto-Apply & Resume Upload
 
-
 on:
   schedule:
-    # Run every 10 minutes
-    - cron: '*/10 * * * *'
     # GitHub uses UTC time. IST is UTC +5:30.
     # 10:00 AM IST -> 04:30 UTC
     - cron: '30 4 * * *'
@@ -14,12 +11,17 @@ on:
     - cron: '30 8 * * *'
     # 04:00 PM IST -> 10:30 UTC
     - cron: '30 10 * * *'
-  
+
   workflow_dispatch:   # Allow manual trigger from GitHub UI
 
 jobs:
   run-naukri-bot:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        # All "run:" steps will execute inside this subfolder
+        working-directory: Naukri-autoapply-bot
 
     steps:
       # ── 1. Checkout the repository (includes resume.pdf) ──────────────
@@ -32,11 +34,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      # ── 3. Install dependencies ────────────────────────────────────────
+      # ── 3. Cache pip packages ──────────────────────────────────────────
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('Naukri-autoapply-bot/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+
+      # ── 4. Install dependencies ────────────────────────────────────────
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 4. Install Firefox + Geckodriver ──────────────────────────────
+      # ── 5. Install Firefox + Geckodriver ──────────────────────────────
       - name: Install Firefox
         run: |
           sudo apt-get update -y
@@ -52,14 +62,14 @@ jobs:
           sudo mv geckodriver /usr/local/bin/
           geckodriver --version
 
-      # ── 5. Run Auto-Apply Script ──────────────────────────────────────
+      # ── 6. Run Auto-Apply Script ──────────────────────────────────────
       - name: Run Job Auto-Apply
         env:
           NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
         run: python Naukri-Mozilla.py
 
-      # ── 6. Run Resume Upload Script ───────────────────────────────────
+      # ── 7. Run Resume Upload Script ───────────────────────────────────
       - name: Run Resume Upload
         env:
           NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
