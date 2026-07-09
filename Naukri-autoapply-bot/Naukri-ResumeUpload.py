@@ -37,17 +37,25 @@ print(f"[INFO] Resume file found: {RESUME_PATH}")
 # --- Launch Chrome (Headless - no browser window) ---
 try:
     options = Options()
-    options.add_argument('--headless')               # runs Chrome invisibly
+    options.add_argument('--headless=new')           # modern headless mode (Chrome 112+)
     options.add_argument('--no-sandbox')             # required in GitHub Actions
     options.add_argument('--disable-dev-shm-usage')  # prevents shared-memory crashes
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--disable-extensions')
     options.add_argument('--disable-blink-features=AutomationControlled')
-    # NOTE: --single-process and --no-zygote removed — they crash Chrome 112+
+    # Spoof a real browser user-agent so Naukri doesn't block/crash the session
+    options.add_argument(
+        '--user-agent=Mozilla/5.0 (X11; Linux x86_64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/150.0.0.0 Safari/537.36'
+    )
+    # Remove automation fingerprints
+    options.add_experimental_option('excludeSwitches', ['enable-automation'])
+    options.add_experimental_option('useAutomationExtension', False)
 
     # Use the exact Chrome binary exported by setup-chrome action (CI)
-    # Falls back to system Chrome for local runs
     chrome_bin = os.environ.get('CHROME_BIN', '')
     if chrome_bin:
         options.binary_location = chrome_bin
@@ -59,10 +67,14 @@ try:
         print(f"[INFO] Using ChromeDriver: {chromedriver_bin}")
         driver = webdriver.Chrome(service=Service(chromedriver_bin), options=options)
     else:
-        # Local fallback: Selenium Manager auto-detects chromedriver
         driver = webdriver.Chrome(options=options)
 
-    wait = WebDriverWait(driver, 20)
+    # Remove navigator.webdriver flag that sites use to detect automation
+    driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+        'source': "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+    })
+
+    wait = WebDriverWait(driver, 25)
     print("[INFO] Chrome launched in headless mode (no window).")
 except Exception as e:
     print(f"[ERROR] Webdriver exception: {e}")
