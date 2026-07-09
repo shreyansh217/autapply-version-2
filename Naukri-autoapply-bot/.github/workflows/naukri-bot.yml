@@ -1,0 +1,67 @@
+name: Naukri Auto-Apply & Resume Upload
+
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
+    # GitHub uses UTC time. IST is UTC +5:30.
+    # 10:00 AM IST -> 04:30 UTC
+    - cron: '30 4 * * *'
+    # 12:00 PM IST (Noon) -> 06:30 UTC
+    - cron: '30 6 * * *'
+    # 02:00 PM IST -> 08:30 UTC
+    - cron: '30 8 * * *'
+    # 04:00 PM IST -> 10:30 UTC
+    - cron: '30 10 * * *'
+  
+  workflow_dispatch:   # Allow manual trigger from GitHub UI
+
+jobs:
+  run-naukri-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout the repository (includes resume.pdf) ──────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Set up Python ───────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ── 3. Install dependencies ────────────────────────────────────────
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── 4. Install Firefox + Geckodriver ──────────────────────────────
+      - name: Install Firefox
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y firefox
+
+      - name: Install Geckodriver
+        run: |
+          GECKO_VER=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest \
+            | grep '"tag_name"' | cut -d '"' -f 4)
+          curl -Lo geckodriver.tar.gz \
+            "https://github.com/mozilla/geckodriver/releases/download/${GECKO_VER}/geckodriver-${GECKO_VER}-linux64.tar.gz"
+          tar -xzf geckodriver.tar.gz
+          sudo mv geckodriver /usr/local/bin/
+          geckodriver --version
+
+      # ── 5. Run Auto-Apply Script ──────────────────────────────────────
+      - name: Run Job Auto-Apply
+        env:
+          NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
+          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+        run: python Naukri-Mozilla.py
+
+      # ── 6. Run Resume Upload Script ───────────────────────────────────
+      - name: Run Resume Upload
+        env:
+          NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
+          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+        run: python Naukri-ResumeUpload.py

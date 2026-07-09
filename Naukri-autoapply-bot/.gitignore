@@ -1,0 +1,18 @@
+# Output files
+naukriapplied.csv
+
+# Local credentials — NEVER commit this!
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+.env/
+
+# OS files
+.DS_Store
+Thumbs.db
