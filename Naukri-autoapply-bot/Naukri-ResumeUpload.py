@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -40,20 +41,34 @@ try:
     options.add_argument('--no-sandbox')             # required in GitHub Actions
     options.add_argument('--disable-dev-shm-usage')  # prevents shared-memory crashes
     options.add_argument('--disable-gpu')
-    options.add_argument('--single-process')         # avoids zygote crashes in containers
-    options.add_argument('--no-zygote')
     options.add_argument('--window-size=1920,1080')
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--disable-blink-features=AutomationControlled')
-    # Selenium Manager (built-in since selenium 4.6) auto-downloads matching chromedriver
-    driver = webdriver.Chrome(options=options)
+    # NOTE: --single-process and --no-zygote removed — they crash Chrome 112+
+
+    # Use the exact Chrome binary exported by setup-chrome action (CI)
+    # Falls back to system Chrome for local runs
+    chrome_bin = os.environ.get('CHROME_BIN', '')
+    if chrome_bin:
+        options.binary_location = chrome_bin
+        print(f"[INFO] Using Chrome binary: {chrome_bin}")
+
+    # Use the exact ChromeDriver exported by setup-chrome action (CI)
+    chromedriver_bin = os.environ.get('CHROMEDRIVER_BIN', '')
+    if chromedriver_bin:
+        print(f"[INFO] Using ChromeDriver: {chromedriver_bin}")
+        driver = webdriver.Chrome(service=Service(chromedriver_bin), options=options)
+    else:
+        # Local fallback: Selenium Manager auto-detects chromedriver
+        driver = webdriver.Chrome(options=options)
+
     wait = WebDriverWait(driver, 20)
     print("[INFO] Chrome launched in headless mode (no window).")
 except Exception as e:
     print(f"[ERROR] Webdriver exception: {e}")
     print("\nTROUBLESHOOT:")
     print("  1. Make sure Google Chrome is installed.")
-    print("  2. Selenium Manager will auto-download matching chromedriver.")
+    print("  2. On CI: CHROME_BIN / CHROMEDRIVER_BIN env vars set by setup-chrome action.")
     exit(1)
 
 # --- Login to Naukri ---

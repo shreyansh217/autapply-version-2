@@ -49,8 +49,15 @@ jobs:
       # ── 5. Install Chrome + ChromeDriver (real binary, not snap) ─────────
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
         with:
           chrome-version: stable
+
+      # Export exact paths so Python script uses matching chrome+chromedriver
+      - name: Export Chrome paths
+        run: |
+          echo "CHROME_BIN=${{ steps.setup-chrome.outputs.chrome-path }}" >> $GITHUB_ENV
+          echo "CHROMEDRIVER_BIN=${{ steps.setup-chrome.outputs.chromedriver-path }}" >> $GITHUB_ENV
 
       # ── 6. Run Resume Upload Script ───────────────────────────────────
       - name: Run Resume Upload
