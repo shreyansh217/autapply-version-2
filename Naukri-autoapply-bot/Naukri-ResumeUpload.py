@@ -163,7 +163,7 @@ profile_loaded = False
 for attempt in range(1, 4):  # retry up to 3 times
     try:
         print(f"[INFO] Navigating to profile page (attempt {attempt}/3)...")
-        driver.get('https://www.naukri.com/mnjuser/profile?id=&altresid')
+        driver.get('https://www.naukri.com/mnjuser/profile')
         time.sleep(6)
         cur = driver.current_url
         title = driver.title
