@@ -83,61 +83,79 @@ except Exception as e:
     print("  2. On CI: CHROME_BIN / CHROMEDRIVER_BIN env vars set by setup-chrome action.")
     exit(1)
 
-# --- Login to Naukri ---
-try:
-    print("[INFO] Navigating to Naukri login page...")
-    driver.get('https://www.naukri.com/nlogin/login')
-    time.sleep(4)
+# ================================================================
+# AUTHENTICATION — Cookie-based (CI) or Password-based (local)
+# ================================================================
+NAUKRI_COOKIES_B64 = os.environ.get('NAUKRI_COOKIES', '')
 
-    # Fill in credentials
-    username_field = wait.until(EC.presence_of_element_located((By.ID, 'usernameField')))
-    username_field.clear()
-    username_field.send_keys(email)
-    time.sleep(0.5)
-
-    password_field = driver.find_element(By.ID, 'passwordField')
-    password_field.clear()
-    password_field.send_keys(password)
-    time.sleep(0.5)
-
-    # Submit: try specific login button first, fallback to Enter key
+if NAUKRI_COOKIES_B64:
+    # ── CI mode: load saved cookies (avoids OTP on unknown IPs) ──────────
+    import json, base64
+    print("[INFO] NAUKRI_COOKIES found — using cookie-based auth (no login needed).")
     try:
-        login_btn = driver.find_element(By.XPATH,
-            "//button[contains(@class,'loginButton')] | "
-            "//button[contains(@class,'login-btn')] | "
-            "//button[@data-ga-track='login-submit'] | "
-            "//div[contains(@class,'actions')]//button"
-        )
-        driver.execute_script("arguments[0].click();", login_btn)
-        print("[INFO] Clicked Login button.")
-    except Exception:
-        # Reliable fallback — this is what worked locally before
-        password_field.send_keys(Keys.ENTER)
-        print("[INFO] Pressed Enter to submit login.")
-
-    # Wait up to 30s for URL to change away from login page
-    print("[INFO] Waiting for login redirect...")
-    try:
-        WebDriverWait(driver, 30).until(
-            lambda d: 'nlogin' not in d.current_url and 'login' not in d.current_url.lower()
-        )
-        print(f"[INFO] Login confirmed! URL: {driver.current_url}")
-    except Exception:
-        print(f"[WARN] URL after login: {driver.current_url}")
-        print(f"[WARN] Page title: {driver.title}")
-        body_text = driver.find_element(By.TAG_NAME, 'body').text[:800]
-        print(f"[WARN] Page text:\n{body_text}")
-        driver.save_screenshot('/tmp/login_failed.png')
-        print("[ERROR] Login failed — session not established.")
-        print("[ERROR] Check: 1) Are NAUKRI_EMAIL/NAUKRI_PASSWORD secrets correct?")
-        print("[ERROR]        2) Does login work locally with these exact credentials?")
+        driver.get('https://www.naukri.com')
+        time.sleep(3)
+        cookies = json.loads(base64.b64decode(NAUKRI_COOKIES_B64))
+        for cookie in cookies:
+            cookie.pop('expiry', None)   # avoid expiry errors
+            try:
+                driver.add_cookie(cookie)
+            except Exception:
+                pass
+        print(f"[INFO] Loaded {len(cookies)} cookies.")
+        # Verify session by navigating to homepage
+        driver.get('https://www.naukri.com/mnjuser/homepage')
+        time.sleep(4)
+        if 'nlogin' in driver.current_url or 'login' in driver.current_url.lower():
+            print("[ERROR] Cookie session expired or invalid!")
+            print("[ERROR] Run export_cookies.py locally and update NAUKRI_COOKIES secret.")
+            driver.quit()
+            exit(1)
+        print(f"[INFO] Cookie auth confirmed! URL: {driver.current_url}")
+    except Exception as e:
+        print(f"[ERROR] Cookie auth failed: {e}")
         driver.quit()
         exit(1)
 
-except Exception as e:
-    print(f"[ERROR] Login exception: {e}")
-    driver.quit()
-    exit(1)
+else:
+    # ── Local mode: normal password login ─────────────────────────────────
+    print("[INFO] No NAUKRI_COOKIES set — using password login (local mode).")
+    try:
+        driver.get('https://www.naukri.com/nlogin/login')
+        time.sleep(4)
+
+        username_field = wait.until(EC.presence_of_element_located((By.ID, 'usernameField')))
+        username_field.clear()
+        username_field.send_keys(email)
+        time.sleep(0.5)
+
+        password_field = driver.find_element(By.ID, 'passwordField')
+        password_field.clear()
+        password_field.send_keys(password)
+        time.sleep(0.5)
+        password_field.send_keys(Keys.ENTER)
+        print("[INFO] Pressed Enter to submit login.")
+
+        # Wait up to 30s for redirect away from login page
+        print("[INFO] Waiting for login redirect...")
+        try:
+            WebDriverWait(driver, 30).until(
+                lambda d: 'nlogin' not in d.current_url and 'login' not in d.current_url.lower()
+            )
+            print(f"[INFO] Login confirmed! URL: {driver.current_url}")
+        except Exception:
+            body_text = driver.find_element(By.TAG_NAME, 'body').text[:800]
+            print(f"[WARN] Page text:\n{body_text}")
+            driver.save_screenshot('/tmp/login_failed.png')
+            print("[ERROR] Login failed — still on login page after 30s.")
+            print("[ERROR] On CI: run export_cookies.py locally and set NAUKRI_COOKIES secret.")
+            driver.quit()
+            exit(1)
+
+    except Exception as e:
+        print(f"[ERROR] Login exception: {e}")
+        driver.quit()
+        exit(1)
 
 
 # --- Navigate to Profile / Resume Upload page (with retry) ---
