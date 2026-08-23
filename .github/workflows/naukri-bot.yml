@@ -2,9 +2,10 @@ name: Naukri Resume Upload
 
 on:
   schedule:
-    # GitHub uses UTC time. IST is UTC +5:30.
-    # 10:00 AM IST -> 04:30 UTC
-     - cron: '30 3 * * *'
+    # GitHub uses UTC. IST is UTC +5:30.
+
+    # 09:00 AM IST -> 03:30 UTC
+    - cron: '30 3 * * *'
 
     # 10:00 AM IST -> 04:30 UTC
     - cron: '30 4 * * *'
@@ -32,8 +33,8 @@ on:
 
     # 06:00 PM IST -> 12:30 UTC
     - cron: '30 12 * * *'
-    
-  workflow_dispatch:   # Allow manual trigger from GitHub UI
+
+  workflow_dispatch:
 
 jobs:
   run-naukri-bot:
@@ -41,54 +42,55 @@ jobs:
 
     defaults:
       run:
-        # All "run:" steps will execute inside this subfolder
         working-directory: Naukri-autoapply-bot
 
     steps:
-      # ── 1. Checkout the repository (includes resume.pdf) ──────────────
+
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Set up Python ───────────────────────────────────────────────
+      # 2. Set up Python
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      # ── 3. Cache pip packages ──────────────────────────────────────────
+      # 3. Cache pip packages
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('Naukri-autoapply-bot/requirements.txt') }}
-          restore-keys: ${{ runner.os }}-pip-
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      # ── 4. Install dependencies ────────────────────────────────────────
+      # 4. Install dependencies
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 5. Install Chrome + ChromeDriver (real binary, not snap) ─────────
+      # 5. Install Chrome + ChromeDriver
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1
         id: setup-chrome
         with:
           chrome-version: stable
 
-      # Export exact paths so Python script uses matching chrome+chromedriver
+      # Export Chrome paths
       - name: Export Chrome paths
         run: |
           echo "CHROME_BIN=${{ steps.setup-chrome.outputs.chrome-path }}" >> $GITHUB_ENV
           echo "CHROMEDRIVER_BIN=${{ steps.setup-chrome.outputs.chromedriver-path }}" >> $GITHUB_ENV
 
-      # ── 6. Run Resume Upload Script ───────────────────────────────────
+      # 6. Run Resume Upload Script
       - name: Run Resume Upload
         env:
-          NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
+          NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-          NAUKRI_COOKIES:  ${{ secrets.NAUKRI_COOKIES }}
+          NAUKRI_COOKIES: ${{ secrets.NAUKRI_COOKIES }}
         run: python Naukri-ResumeUpload.py
 
-      # ── 7. Upload debug screenshots (runs even on failure) ────────────
+      # 7. Upload debug screenshots
       - name: Upload debug screenshots
         if: always()
         uses: actions/upload-artifact@v4
