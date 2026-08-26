@@ -1,16 +1,10 @@
-name: Naukri Auto-Apply & Resume Upload
+name: Naukri Show Interest
 
 on:
   schedule:
     # GitHub uses UTC time. IST is UTC +5:30.
     # 10:00 AM IST -> 04:30 UTC
     - cron: '30 4 * * *'
-    # 12:00 PM IST (Noon) -> 06:30 UTC
-    - cron: '30 6 * * *'
-    # 02:00 PM IST -> 08:30 UTC
-    - cron: '30 8 * * *'
-    # 04:00 PM IST -> 10:30 UTC
-    - cron: '30 10 * * *'
 
   workflow_dispatch:   # Allow manual trigger from GitHub UI
 
@@ -46,32 +40,16 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      # ── 5. Install Firefox + Geckodriver ──────────────────────────────
-      - name: Install Firefox
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y firefox
+      # ── 5. Install Chrome ──────────────────────────────────────────────
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
 
-      - name: Install Geckodriver
-        run: |
-          GECKO_VER=$(curl -s https://api.github.com/repos/mozilla/geckodriver/releases/latest \
-            | grep '"tag_name"' | cut -d '"' -f 4)
-          curl -Lo geckodriver.tar.gz \
-            "https://github.com/mozilla/geckodriver/releases/download/${GECKO_VER}/geckodriver-${GECKO_VER}-linux64.tar.gz"
-          tar -xzf geckodriver.tar.gz
-          sudo mv geckodriver /usr/local/bin/
-          geckodriver --version
-
-      # ── 6. Run Auto-Apply Script ──────────────────────────────────────
-      - name: Run Job Auto-Apply
+      # ── 6. Run Recommended Jobs interest script ───────────────────────
+      - name: Share interest in Recommended Jobs
         env:
           NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-        run: python Naukri-Mozilla.py
-
-      # ── 7. Run Resume Upload Script ───────────────────────────────────
-      - name: Run Resume Upload
-        env:
-          NAUKRI_EMAIL:    ${{ secrets.NAUKRI_EMAIL }}
-          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-        run: python Naukri-ResumeUpload.py
+          NAUKRI_COOKIES:  ${{ secrets.NAUKRI_COOKIES }}
+          NAUKRI_HEADLESS: 'true'
+          NAUKRI_MAX_INTEREST: '50'
+        run: python Naukri-Show-Interest.py

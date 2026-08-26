@@ -19,3 +19,10 @@ Automation that applies to jobs on Naukri.com easily for fatster job hunting and
 - Run the Naukri-autoapply bot by python Naukri-Edge.py
 - Please note this script was built in selenium version 4
 
+## Run Show Interest every day on GitHub Actions
+
+- Add repository secrets named `NAUKRI_EMAIL` and `NAUKRI_PASSWORD`.
+- For GitHub-hosted runners, also create `NAUKRI_COOKIES` using `python export_cookies.py` locally. This avoids login OTP challenges.
+- The workflow runs `Naukri-Show-Interest.py` once daily at 10:00 AM India Standard Time.
+- You can also run it manually from GitHub Actions using **Run workflow**.
+
