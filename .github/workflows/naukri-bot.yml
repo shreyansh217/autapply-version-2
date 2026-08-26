@@ -1,38 +1,11 @@
-name: Naukri Resume Upload
+name: Naukri Show Interest
 
 on:
   schedule:
     # GitHub uses UTC. IST is UTC +5:30.
 
-    # 09:00 AM IST -> 03:30 UTC
-    - cron: '30 3 * * *'
-
     # 10:00 AM IST -> 04:30 UTC
     - cron: '30 4 * * *'
-
-    # 11:00 AM IST -> 05:30 UTC
-    - cron: '30 5 * * *'
-
-    # 12:00 PM IST -> 06:30 UTC
-    - cron: '30 6 * * *'
-
-    # 01:00 PM IST -> 07:30 UTC
-    - cron: '30 7 * * *'
-
-    # 02:00 PM IST -> 08:30 UTC
-    - cron: '30 8 * * *'
-
-    # 03:00 PM IST -> 09:30 UTC
-    - cron: '30 9 * * *'
-
-    # 04:00 PM IST -> 10:30 UTC
-    - cron: '30 10 * * *'
-
-    # 05:00 PM IST -> 11:30 UTC
-    - cron: '30 11 * * *'
-
-    # 06:00 PM IST -> 12:30 UTC
-    - cron: '30 12 * * *'
 
   workflow_dispatch:
 
@@ -82,21 +55,20 @@ jobs:
           echo "CHROME_BIN=${{ steps.setup-chrome.outputs.chrome-path }}" >> $GITHUB_ENV
           echo "CHROMEDRIVER_BIN=${{ steps.setup-chrome.outputs.chromedriver-path }}" >> $GITHUB_ENV
 
-      # 6. Run Resume Upload Script
-      - name: Run Resume Upload
+      # 6. Run Recommended Jobs interest script
+      - name: Share interest in Recommended Jobs
+        env:
+          NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
+          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+          NAUKRI_COOKIES: ${{ secrets.NAUKRI_COOKIES }}
+          NAUKRI_HEADLESS: 'true'
+          NAUKRI_MAX_INTEREST: '50'
+        run: python Naukri-Show-Interest.py
+
+      # 7. Upload or update the resume
+      - name: Upload Resume
         env:
           NAUKRI_EMAIL: ${{ secrets.NAUKRI_EMAIL }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
           NAUKRI_COOKIES: ${{ secrets.NAUKRI_COOKIES }}
         run: python Naukri-ResumeUpload.py
-
-      # 7. Upload debug screenshots
-      - name: Upload debug screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: naukri-debug-screenshots
-          path: |
-            /tmp/naukri_profile.png
-            /tmp/login_failed.png
-          if-no-files-found: ignore
