@@ -59,6 +59,21 @@ print("  come back here and press Enter.")
 print("=" * 60)
 input("\n  >> Press Enter when you are logged in: ")
 
+# Verify the profile page before exporting, since homepage success is not enough.
+print("[INFO] Verifying profile access...")
+driver.get('https://www.naukri.com/mnjuser/profile')
+time.sleep(5)
+if 'access denied' in driver.title.lower() or 'access denied' in driver.page_source.lower():
+    print("[ERROR] Naukri blocked the profile page with an Access Denied response.")
+    print("[ERROR] Do not copy these cookies; use a permitted residential/network IP and try again.")
+    driver.quit()
+    exit(1)
+if 'nlogin' in driver.current_url.lower() or 'login' in driver.current_url.lower():
+    print("[ERROR] Login session is not usable. Complete login again before exporting cookies.")
+    driver.quit()
+    exit(1)
+print(f"[INFO] Profile access confirmed: {driver.title}")
+
 # Export all cookies
 cookies = driver.get_cookies()
 driver.quit()

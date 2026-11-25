@@ -72,3 +72,4 @@ jobs:
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
           NAUKRI_COOKIES: ${{ secrets.NAUKRI_COOKIES }}
         run: python Naukri-ResumeUpload.py
+        continue-on-error: true

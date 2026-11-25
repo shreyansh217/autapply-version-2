@@ -169,6 +169,14 @@ for attempt in range(1, 4):  # retry up to 3 times
         title = driver.title
         print(f"[DEBUG] Profile nav URL: {cur}")
         print(f"[DEBUG] Profile nav title: {title}")
+        # Akamai/Naukri WAF pages can still return HTTP 200, so HTTP status is not useful.
+        page_source = driver.page_source.lower()
+        if 'access denied' in title.lower() or 'access denied' in page_source:
+            raise Exception(
+                "Naukri profile page was blocked by its Access Denied/WAF page. "
+                "GitHub Actions datacenter IP or the saved cookies are no longer accepted. "
+                "Refresh NAUKRI_COOKIES locally on an allowed network; GitHub IP reruns may remain blocked."
+            )
         # Fail if Naukri redirected us back to login
         if 'nlogin' in cur or 'login' in cur.lower() or 'nlogin' in title.lower():
             raise Exception(f"Redirected back to login — session lost. URL: {cur}")
